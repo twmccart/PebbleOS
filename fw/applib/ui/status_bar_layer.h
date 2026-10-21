@@ -37,6 +37,25 @@
 #define STATUS_BAR_LAYER_LARGE_BOLD_HEIGHT \
   _STATUS_BAR_LAYER_LARGE_BOLD_HEIGHT(PBL_PLATFORM_TYPE_CURRENT)
 
+//! The height of the status bar when rendering the "Bigger & Bolder" clock, including separator
+//! height, for all platforms.
+#define _STATUS_BAR_LAYER_EXTRA_LARGE_BOLD_HEIGHT(plat)                                 \
+  PBL_PLATFORM_SWITCH(plat, /*aplite*/ 26, /*basalt*/ 26, /*chalk*/ 28, /*diorite*/ 26, \
+                      /*emery*/ 32, /*flint*/ 26, /*gabbro*/ 32)
+
+//! The "Bigger & Bolder" status bar height for the current platform.
+#define STATUS_BAR_LAYER_EXTRA_LARGE_BOLD_HEIGHT \
+  _STATUS_BAR_LAYER_EXTRA_LARGE_BOLD_HEIGHT(PBL_PLATFORM_TYPE_CURRENT)
+
+//! The height of the status bar when rendering the "Huge" clock, including separator height,
+//! for all platforms. At least a fifth of the display height.
+#define _STATUS_BAR_LAYER_HUGE_HEIGHT(plat)                                             \
+  PBL_PLATFORM_SWITCH(plat, /*aplite*/ 34, /*basalt*/ 34, /*chalk*/ 36, /*diorite*/ 34, \
+                      /*emery*/ 46, /*flint*/ 34, /*gabbro*/ 52)
+
+//! The "Huge" status bar height for the current platform.
+#define STATUS_BAR_LAYER_HUGE_HEIGHT _STATUS_BAR_LAYER_HUGE_HEIGHT(PBL_PLATFORM_TYPE_CURRENT)
+
 //! The min width of the status bar
 #define STATUS_BAR_LAYER_MIN_WIDTH 35
 //! The distance from info_text to right edge of the status bar
@@ -70,6 +89,12 @@ typedef enum {
   //! Same as StatusBarLayerModeClockLargeBold but draws a 1px black outline around the glyphs, for
   //! legibility over busy backgrounds such as album art.
   StatusBarLayerModeClockLargeBoldOutlined = 5,
+  //! Same as StatusBarLayerModeClockLargeBold but with a still larger font and taller bar (the
+  //! notification "Bigger & Bolder" style).
+  StatusBarLayerModeClockExtraLargeBold = 6,
+  //! The largest bold clock, in a bar at least a fifth of the display height (the notification
+  //! "Huge" style).
+  StatusBarLayerModeClockHuge = 7,
 } StatusBarLayerMode;
 
 //! Values that are used to indicate the different status bar separator modes.
