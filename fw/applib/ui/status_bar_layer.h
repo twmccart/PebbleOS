@@ -95,6 +95,12 @@ typedef enum {
   //! The largest bold clock, in a bar at least a fifth of the display height (the notification
   //! "Huge" style).
   StatusBarLayerModeClockHuge = 7,
+  //! Same as StatusBarLayerModeClockExtraLargeBold but with the outline of
+  //! StatusBarLayerModeClockLargeBoldOutlined.
+  StatusBarLayerModeClockExtraLargeBoldOutlined = 8,
+  //! Same as StatusBarLayerModeClockHuge but with the outline of
+  //! StatusBarLayerModeClockLargeBoldOutlined.
+  StatusBarLayerModeClockHugeOutlined = 9,
 } StatusBarLayerMode;
 
 //! Values that are used to indicate the different status bar separator modes.

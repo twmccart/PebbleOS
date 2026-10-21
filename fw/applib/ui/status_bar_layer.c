@@ -33,10 +33,27 @@ static PBL_ALWAYS_INLINE bool prv_mode_is_large_bold(StatusBarLayerMode mode) {
          mode == StatusBarLayerModeClockLargeBoldOutlined;
 }
 
+// Likewise, the larger clocks each come in a plain and an Outlined variant.
+static PBL_ALWAYS_INLINE bool prv_mode_is_extra_large_bold(StatusBarLayerMode mode) {
+  return mode == StatusBarLayerModeClockExtraLargeBold ||
+         mode == StatusBarLayerModeClockExtraLargeBoldOutlined;
+}
+
+static PBL_ALWAYS_INLINE bool prv_mode_is_huge(StatusBarLayerMode mode) {
+  return mode == StatusBarLayerModeClockHuge || mode == StatusBarLayerModeClockHugeOutlined;
+}
+
+// The Outlined clocks draw a black outline around the glyphs for legibility over busy backgrounds.
+static PBL_ALWAYS_INLINE bool prv_mode_is_outlined(StatusBarLayerMode mode) {
+  return mode == StatusBarLayerModeClockLargeBoldOutlined ||
+         mode == StatusBarLayerModeClockExtraLargeBoldOutlined ||
+         mode == StatusBarLayerModeClockHugeOutlined;
+}
+
 // The large clock modes all center the time vertically in a taller bar.
 static PBL_ALWAYS_INLINE bool prv_mode_is_vertically_centered(StatusBarLayerMode mode) {
-  return prv_mode_is_large_bold(mode) || mode == StatusBarLayerModeClockExtraLargeBold ||
-         mode == StatusBarLayerModeClockHuge;
+  return prv_mode_is_large_bold(mode) || prv_mode_is_extra_large_bold(mode) ||
+         prv_mode_is_huge(mode);
 }
 
 static PBL_ALWAYS_INLINE bool prv_mode_is_clock(StatusBarLayerMode mode) {
@@ -50,11 +67,11 @@ static PBL_ALWAYS_INLINE StatusBarTextFormat prv_get_text_format(const StatusBar
   StatusBarLayerMode mode = config ? config->mode : StatusBarLayerModeClock;
   // The "Huge" clock leaves no room for info text in its own font, so the info text uses the
   // "Big & Bold" font instead.
-  if (!is_title && mode == StatusBarLayerModeClockHuge) {
+  if (!is_title && prv_mode_is_huge(mode)) {
     mode = StatusBarLayerModeClockLargeBold;
   }
   const char *font_key;
-  if (mode == StatusBarLayerModeClockHuge) {
+  if (prv_mode_is_huge(mode)) {
     font_key = PBL_PLATFORM_SWITCH(platform,
                                    /*aplite*/ FONT_KEY_GOTHIC_28_BOLD,
                                    /*basalt*/ FONT_KEY_GOTHIC_28_BOLD,
@@ -63,7 +80,7 @@ static PBL_ALWAYS_INLINE StatusBarTextFormat prv_get_text_format(const StatusBar
                                    /*emery*/ FONT_KEY_GOTHIC_36_BOLD,
                                    /*flint*/ FONT_KEY_GOTHIC_28_BOLD,
                                    /*gabbro*/ FONT_KEY_GOTHIC_36_BOLD);
-  } else if (mode == StatusBarLayerModeClockExtraLargeBold) {
+  } else if (prv_mode_is_extra_large_bold(mode)) {
     font_key = PBL_PLATFORM_SWITCH(platform,
                                    /*aplite*/ FONT_KEY_GOTHIC_24_BOLD,
                                    /*basalt*/ FONT_KEY_GOTHIC_24_BOLD,
@@ -102,10 +119,10 @@ static PBL_ALWAYS_INLINE StatusBarTextFormat prv_get_text_format(const StatusBar
 static int prv_height(const StatusBarLayerConfig *config) {
   const PlatformType platform = process_manager_current_platform();
   const StatusBarLayerMode mode = config ? config->mode : StatusBarLayerModeClock;
-  if (mode == StatusBarLayerModeClockHuge) {
+  if (prv_mode_is_huge(mode)) {
     return _STATUS_BAR_LAYER_HUGE_HEIGHT(platform);
   }
-  if (mode == StatusBarLayerModeClockExtraLargeBold) {
+  if (prv_mode_is_extra_large_bold(mode)) {
     return _STATUS_BAR_LAYER_EXTRA_LARGE_BOLD_HEIGHT(platform);
   }
   if (prv_mode_is_large_bold(mode)) {
@@ -564,10 +581,10 @@ static void prv_status_bar_layer_render_text(GContext *ctx, const StatusBarLayer
     return;
   }
   const GRect text_box = GRect(x_start, y, width, font_height);
-  // In the outlined mode, draw a 1px black outline for legibility over busy backgrounds (e.g. album
-  // art): the glyphs are drawn black at the 8 surrounding offsets first, then the foreground on
-  // top.
-  if (config && config->mode == StatusBarLayerModeClockLargeBoldOutlined) {
+  // In the outlined modes, draw a 1px black outline for legibility over busy backgrounds (e.g.
+  // album art): the glyphs are drawn black at the 8 surrounding offsets first, then the foreground
+  // on top.
+  if (config && prv_mode_is_outlined(config->mode)) {
     static const GPoint k_outline_offsets[] = {
       {-1, -1}, {0, -1}, {1, -1}, {-1, 0}, {1, 0}, {-1, 1}, {0, 1}, {1, 1},
     };
