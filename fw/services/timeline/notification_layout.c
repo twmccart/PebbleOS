@@ -200,6 +200,26 @@ static bool prv_should_enlarge_emoji(NotificationLayout *layout) {
           prv_get_emoji_icon(layout) != INVALID_RESOURCE);
 }
 
+// Effective notification status bar height: taller for the larger clock styles, otherwise the
+// default. The content top is pushed down by this amount, so the banner clip math must match it.
+static int16_t prv_notif_status_bar_height(void) {
+  switch (alerts_preferences_get_notification_status_bar_style()) {
+    case NotificationStatusBarStyle_LargeBold:
+      return STATUS_BAR_LAYER_LARGE_BOLD_HEIGHT;
+    case NotificationStatusBarStyle_ExtraLargeBold:
+      return STATUS_BAR_LAYER_EXTRA_LARGE_BOLD_HEIGHT;
+    case NotificationStatusBarStyle_Huge:
+      return STATUS_BAR_LAYER_HUGE_HEIGHT;
+    default:
+      return STATUS_BAR_LAYER_HEIGHT;
+  }
+}
+
+//! Height of one page of notification text: the display minus the status bar and the arrow.
+static int16_t prv_page_height(void) {
+  return DISP_ROWS - prv_notif_status_bar_height() - LAYOUT_ARROW_HEIGHT;
+}
+
 #if NOTIFICATION_IMAGE_SUPPORTED
 //! Space above and below the image band. Its own constant because body_padding is 0 for rect at
 //! the default content size, which leaves the image touching the body text.
@@ -211,9 +231,6 @@ static bool prv_should_enlarge_emoji(NotificationLayout *layout) {
 //! circle, so the image takes a page of its own and sits centred in it.
 #define NOTIFICATION_IMAGE_CIRCLE_INSET (8)
 #define NOTIFICATION_IMAGE_RADIUS       (DISP_ROWS / 2 - NOTIFICATION_IMAGE_CIRCLE_INSET)
-//! Centre of the page the image gets, which sits between the status bar and the paging arrow and so
-//! is a couple of pixels below the circle's own centre.
-#define NOTIFICATION_IMAGE_PAGE_CENTRE_Y (STATUS_BAR_LAYER_HEIGHT + LAYOUT_HEIGHT / 2)
 
 //! Whether a `width`-wide image of this aspect, centred in its page, clears the bezel.
 //!
@@ -223,7 +240,10 @@ static bool prv_should_enlarge_emoji(NotificationLayout *layout) {
 static bool prv_image_fits_circle(int16_t width, uint8_t aspect) {
   const int32_t half_w = width / 2;
   const int32_t half_h = ((int32_t)width * aspect) / 32;
-  const int32_t dy = ABS(NOTIFICATION_IMAGE_PAGE_CENTRE_Y - DISP_ROWS / 2) + half_h;
+  // The image's page sits between the status bar and the paging arrow, so its centre is a few
+  // pixels below the circle's own centre.
+  const int32_t page_centre_y = prv_notif_status_bar_height() + prv_page_height() / 2;
+  const int32_t dy = ABS(page_centre_y - DISP_ROWS / 2) + half_h;
   const int32_t r = NOTIFICATION_IMAGE_RADIUS;
   return (half_w * half_w) + (dy * dy) <= (r * r);
 }
@@ -507,7 +527,7 @@ static void PBL_NOINLINE prv_init_view(NotificationLayout *layout) {
     // Only calculate size if using a body icon, calculating size is stack expensive
     prv_card_render(layout, graphics_context_get_current_context(), false /* render */);
 
-    if ((layout->view_size.h > (LAYOUT_HEIGHT + LAYOUT_ARROW_HEIGHT))) {
+    if ((layout->view_size.h > (prv_page_height() + LAYOUT_ARROW_HEIGHT))) {
       // The large emoji won't fit in a single screen, so don't use the large emoji
       prv_destroy_view(layout);
       layout->view_node = prv_create_view(layout, false /* use_body_icon */);
@@ -533,21 +553,6 @@ static PBL_CONST_FUNC int32_t prv_interpolate_linear(int32_t out_min, int32_t ou
                                                      int32_t in_min, int32_t in_max,
                                                      int32_t progress) {
   return out_min + (out_max - out_min) * (progress - in_min) / (in_max - in_min);
-}
-
-// Effective notification status bar height: taller for the larger clock styles, otherwise the
-// default. The content top is pushed down by this amount, so the banner clip math must match it.
-static int16_t prv_notif_status_bar_height(void) {
-  switch (alerts_preferences_get_notification_status_bar_style()) {
-    case NotificationStatusBarStyle_LargeBold:
-      return STATUS_BAR_LAYER_LARGE_BOLD_HEIGHT;
-    case NotificationStatusBarStyle_ExtraLargeBold:
-      return STATUS_BAR_LAYER_EXTRA_LARGE_BOLD_HEIGHT;
-    case NotificationStatusBarStyle_Huge:
-      return STATUS_BAR_LAYER_HUGE_HEIGHT;
-    default:
-      return STATUS_BAR_LAYER_HEIGHT;
-  }
 }
 
 static void prv_draw_banner_round(NotificationLayout *notification_layout, GContext *ctx,
@@ -599,7 +604,7 @@ static PBL_NOINLINE void prv_card_render_internal(NotificationLayout *layout, GC
     prv_hide_or_show_banner_icon(&layout->icon_layer, notification_layout_frame);
     prv_draw_banner_round(layout, ctx, notification_layout_frame, *colors);
     // work around the clip box and smaller layout_height for circular text paging
-    ctx->draw_state.clip_box.size.h = MIN(ctx->draw_state.clip_box.size.h, LAYOUT_HEIGHT);
+    ctx->draw_state.clip_box.size.h = MIN(ctx->draw_state.clip_box.size.h, prv_page_height());
 #else
     static const GRect banner_box = {.size = {DISP_COLS, LAYOUT_BANNER_HEIGHT_RECT}};
     graphics_fill_rect(ctx, &banner_box);
@@ -609,7 +614,8 @@ static PBL_NOINLINE void prv_card_render_internal(NotificationLayout *layout, GC
 #if PBL_ROUND
   const bool text_visible =
       (render && WITHIN(notification_layout_frame->origin.y,
-                        TEXT_VISIBLE_LOWER_THRESHOLD(notification_layout_frame->size.h),
+                        TEXT_VISIBLE_LOWER_THRESHOLD(notification_layout_frame->size.h,
+                                                     prv_page_height() + LAYOUT_ARROW_HEIGHT),
                         TEXT_VISIBLE_UPPER_THRESHOLD));
 #else
   const bool text_visible = render;
@@ -618,11 +624,11 @@ static PBL_NOINLINE void prv_card_render_internal(NotificationLayout *layout, GC
     .origin = {CARD_MARGIN, LAYOUT_TOP_BANNER_HEIGHT},
     .size = {DISP_COLS - 2 * CARD_MARGIN, LAYOUT_MAX_HEIGHT},
   };
-  static const GRect page_frame_on_screen = {
-    .origin = {0, STATUS_BAR_LAYER_HEIGHT},
-    .size = {DISP_COLS, DISP_ROWS - STATUS_BAR_LAYER_HEIGHT - LAYOUT_ARROW_HEIGHT}
+  const GRect page_frame_on_screen = {
+    .origin = {0, prv_notif_status_bar_height()},
+    .size = {DISP_COLS, prv_page_height()},
   };
-  static const GTextNodeDrawConfig config = {
+  const GTextNodeDrawConfig config = {
     .page_frame = &page_frame_on_screen,
     .origin_on_screen = &page_frame_on_screen.origin,
     .content_inset = 8, // text flow inset
@@ -643,8 +649,8 @@ static PBL_NOINLINE void prv_card_render_internal(NotificationLayout *layout, GC
   layout->view_size.h += LAYOUT_TOP_BANNER_HEIGHT;
 
 #if PBL_ROUND
-  // Notification text is paged by LAYOUT_HEIGHT, so make full page height
-  layout->view_size.h = ROUND_TO_MOD_CEIL(layout->view_size.h, LAYOUT_HEIGHT);
+  // Notification text is paged by the page height, so make full page height
+  layout->view_size.h = ROUND_TO_MOD_CEIL(layout->view_size.h, prv_page_height());
   // Notifications are swapped using frame height, so last page includes additional arrow height
   layout->view_size.h += LAYOUT_ARROW_HEIGHT;
 #else
