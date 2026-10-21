@@ -535,14 +535,19 @@ static PBL_CONST_FUNC int32_t prv_interpolate_linear(int32_t out_min, int32_t ou
   return out_min + (out_max - out_min) * (progress - in_min) / (in_max - in_min);
 }
 
-// Effective notification status bar height: taller when the "Big & Bold" clock
-// style is selected, otherwise the default. The content top is pushed down by
-// this amount, so the banner clip math must match it.
+// Effective notification status bar height: taller for the larger clock styles, otherwise the
+// default. The content top is pushed down by this amount, so the banner clip math must match it.
 static int16_t prv_notif_status_bar_height(void) {
-  return (alerts_preferences_get_notification_status_bar_style() ==
-          NotificationStatusBarStyle_LargeBold)
-             ? STATUS_BAR_LAYER_LARGE_BOLD_HEIGHT
-             : STATUS_BAR_LAYER_HEIGHT;
+  switch (alerts_preferences_get_notification_status_bar_style()) {
+    case NotificationStatusBarStyle_LargeBold:
+      return STATUS_BAR_LAYER_LARGE_BOLD_HEIGHT;
+    case NotificationStatusBarStyle_ExtraLargeBold:
+      return STATUS_BAR_LAYER_EXTRA_LARGE_BOLD_HEIGHT;
+    case NotificationStatusBarStyle_Huge:
+      return STATUS_BAR_LAYER_HUGE_HEIGHT;
+    default:
+      return STATUS_BAR_LAYER_HEIGHT;
+  }
 }
 
 static void prv_draw_banner_round(NotificationLayout *notification_layout, GContext *ctx,
