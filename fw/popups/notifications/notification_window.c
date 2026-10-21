@@ -1286,6 +1286,10 @@ static StatusBarLayerMode prv_status_bar_mode_for_style(NotificationStatusBarSty
       return StatusBarLayerModeClockBold;
     case NotificationStatusBarStyle_LargeBold:
       return StatusBarLayerModeClockLargeBold;
+    case NotificationStatusBarStyle_ExtraLargeBold:
+      return StatusBarLayerModeClockExtraLargeBold;
+    case NotificationStatusBarStyle_Huge:
+      return StatusBarLayerModeClockHuge;
     case NotificationStatusBarStyle_Default:
     default:
       return StatusBarLayerModeClock;

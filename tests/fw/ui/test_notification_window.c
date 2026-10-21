@@ -452,6 +452,38 @@ void test_notification_window__big_bold(void) {
   FAKE_GRAPHICS_CONTEXT_CHECK_DEST_BITMAP_FILE();
 }
 
+void test_notification_window__bigger_bolder(void) {
+  s_notification_status_bar_style = NotificationStatusBarStyle_ExtraLargeBold;
+  s_test_data = (NotificationWindowTestData){
+    .icon_id = TIMELINE_RESOURCE_NOTIFICATION_FACEBOOK_MESSENGER,
+    .title = "Henry Levak",
+    .body = "Nu, Shara. Where are my designs, blat?",
+    .show_notification_timestamp = true,
+    .timestamp = "Just now",
+    .background_color = GColorPictonBlue,
+  };
+  const unsigned int num_down_scrolls =
+      PBL_IF_RECT_ELSE((PreferredContentSizeDefault < PreferredContentSizeLarge) ? 1 : 0, 0);
+  prv_prepare_canvas_and_render_notification_windows(num_down_scrolls);
+  FAKE_GRAPHICS_CONTEXT_CHECK_DEST_BITMAP_FILE();
+}
+
+void test_notification_window__huge(void) {
+  s_notification_status_bar_style = NotificationStatusBarStyle_Huge;
+  s_test_data = (NotificationWindowTestData){
+    .icon_id = TIMELINE_RESOURCE_NOTIFICATION_FACEBOOK_MESSENGER,
+    .title = "Henry Levak",
+    .body = "Nu, Shara. Where are my designs, blat?",
+    .show_notification_timestamp = true,
+    .timestamp = "Just now",
+    .background_color = GColorPictonBlue,
+  };
+  const unsigned int num_down_scrolls =
+      PBL_IF_RECT_ELSE((PreferredContentSizeDefault < PreferredContentSizeLarge) ? 1 : 0, 0);
+  prv_prepare_canvas_and_render_notification_windows(num_down_scrolls);
+  FAKE_GRAPHICS_CONTEXT_CHECK_DEST_BITMAP_FILE();
+}
+
 void test_notification_window__emoji(void) {
   s_test_data = (NotificationWindowTestData){
     .icon_id = TIMELINE_RESOURCE_NOTIFICATION_FACEBOOK_MESSENGER,
