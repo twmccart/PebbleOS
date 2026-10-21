@@ -101,6 +101,12 @@ void test_status_bar_layer__extra_large_bold_and_huge_heights(void) {
   cl_assert(status_bar.layer.frame.size.h == STATUS_BAR_LAYER_HUGE_HEIGHT);
   cl_assert(status_bar.layer.bounds.size.h == STATUS_BAR_LAYER_HUGE_HEIGHT);
 
+  // The Outlined variants size the bar like their plain counterparts.
+  status_bar_layer_set_mode(&status_bar, StatusBarLayerModeClockExtraLargeBoldOutlined);
+  cl_assert(status_bar.layer.frame.size.h == STATUS_BAR_LAYER_EXTRA_LARGE_BOLD_HEIGHT);
+  status_bar_layer_set_mode(&status_bar, StatusBarLayerModeClockHugeOutlined);
+  cl_assert(status_bar.layer.frame.size.h == STATUS_BAR_LAYER_HUGE_HEIGHT);
+
   status_bar_layer_set_mode(&status_bar, StatusBarLayerModeClock);
   cl_assert_status_bar_height(status_bar);
 }
