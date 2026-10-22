@@ -11,6 +11,7 @@
 #include <pbl/services/i18n/i18n.h>
 #include <pbl/services/imaging.h>
 #include <pbl/services/music.h>
+#include <pbl/services/notifications/alerts_preferences_private.h>
 #include <pbl/services/vibes/vibe_score.h>
 #include <pbl/util/math.h>
 #include <pbl/util/trig.h>
@@ -1459,6 +1460,47 @@ static void prv_artist_restore(MusicAppData *data) {
                    &GRect(0, -ARTIST_BOUNDS_OFFSET, ar.size.w, ar.size.h + ARTIST_BOUNDS_OFFSET));
 }
 
+#if !MUSIC_ROUND_MEDIA_LAYOUT
+//! Clock mode for the notification status bar style. Over art the clock is outlined and at least
+//! "Big & Bold"; on the stock layout it steps down to the largest bar that clears the artist line.
+static StatusBarLayerMode prv_clock_mode_for_notification_style(bool over_art) {
+  const NotificationStatusBarStyle style = alerts_preferences_get_notification_status_bar_style();
+  if (over_art) {
+    switch (style) {
+      case NotificationStatusBarStyle_ExtraLargeBold:
+        return StatusBarLayerModeClockExtraLargeBoldOutlined;
+      case NotificationStatusBarStyle_Huge:
+        return StatusBarLayerModeClockHugeOutlined;
+      default:
+        return StatusBarLayerModeClockLargeBoldOutlined;
+    }
+  }
+  const int16_t artist_top = prv_config()->artist_field.origin_y;
+  switch (style) {
+    case NotificationStatusBarStyle_Huge:
+      if (STATUS_BAR_LAYER_HUGE_HEIGHT <= artist_top) {
+        return StatusBarLayerModeClockHuge;
+      }
+      [[fallthrough]];
+    case NotificationStatusBarStyle_ExtraLargeBold:
+      if (STATUS_BAR_LAYER_EXTRA_LARGE_BOLD_HEIGHT <= artist_top) {
+        return StatusBarLayerModeClockExtraLargeBold;
+      }
+      [[fallthrough]];
+    case NotificationStatusBarStyle_LargeBold:
+      if (STATUS_BAR_LAYER_LARGE_BOLD_HEIGHT <= artist_top) {
+        return StatusBarLayerModeClockLargeBold;
+      }
+      [[fallthrough]];
+    case NotificationStatusBarStyle_Bold:
+      return StatusBarLayerModeClockBold;
+    case NotificationStatusBarStyle_Default:
+    default:
+      return StatusBarLayerModeClock;
+  }
+}
+#endif
+
 //! Reflect the current art state: show/hide the cover, lay out the artist (outlined, over the art)
 //! and the scrolling title, and outline the clock so it stays legible over
 //! the cover. A full-window repaint clears the moved layers' old pixels.
@@ -1507,13 +1549,7 @@ static void prv_apply_art_appearance(MusicAppData *data) {
 #if MUSIC_ROUND_MEDIA_LAYOUT
   clock_mode = StatusBarLayerModeClock;
 #else
-  if (!prv_use_media_layout(data)) {
-    clock_mode = StatusBarLayerModeClock;
-  } else if (data->has_album_art) {
-    clock_mode = StatusBarLayerModeClockLargeBoldOutlined;
-  } else {
-    clock_mode = StatusBarLayerModeClockLargeBold;
-  }
+  clock_mode = prv_clock_mode_for_notification_style(data->has_album_art);
 #endif
   status_bar_layer_set_colors(&data->status_layer, GColorClear,
                               data->has_album_art ? GColorWhite : GColorBlack);

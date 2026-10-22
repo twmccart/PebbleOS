@@ -6,6 +6,7 @@
 
 #include <pbl/services/imaging.h>
 #include <pbl/services/music.h>
+#include <pbl/services/notifications/alerts_preferences_private.h>
 #include <pbl/util/size.h>
 
 #include <applib/fonts/fonts.h>
@@ -184,6 +185,12 @@ bool shell_prefs_get_music_show_album_art(void) {
   return s_prefs_music_show_album_art;
 }
 
+static NotificationStatusBarStyle s_notification_status_bar_style;
+
+NotificationStatusBarStyle alerts_preferences_get_notification_status_bar_style(void) {
+  return s_notification_status_bar_style;
+}
+
 // Misc stubs
 /////////////////////
 
@@ -287,6 +294,7 @@ void test_music__initialize(void) {
   s_prefs_music_show_volume_controls = true;
   s_prefs_music_show_progress_bar = true;
   s_prefs_music_show_album_art = false;
+  s_notification_status_bar_style = NotificationStatusBarStyle_Default;
 
   framebuffer_init(&s_fb, &(GSize){DISP_COLS, DISP_ROWS});
   framebuffer_clear(&s_fb);
@@ -533,6 +541,47 @@ void test_music__playing_album_art(void) {
 
   prv_launch_app_and_render();
   cl_check(gbitmap_pbi_eq(&s_ctx.dest_bitmap, TEST_PBI_FILE));
+#endif
+}
+
+// The clock follows the notification status bar style, stepping down to a bar that clears the
+// artist line on the stock layout. The round layout draws its own clock and is unchanged.
+void test_music__playing_huge_status_bar(void) {
+  prv_set_now_playing("Just Like Heaven", "The Cure");
+  s_music_play_state = MusicPlayStatePlaying;
+  s_music_track_pos_ms = 75 * 1000;
+  s_music_track_length_ms = 245 * 1000;
+  s_music_progress_supported = true;
+  s_notification_status_bar_style = NotificationStatusBarStyle_Huge;
+
+  prv_launch_app_and_render();
+#if MUSIC_ROUND_MEDIA_LAYOUT
+  cl_check(gbitmap_pbi_eq(&s_ctx.dest_bitmap, TEST_NAMED_PBI_FILE("test_music__playing")));
+#else
+  cl_check(gbitmap_pbi_eq(&s_ctx.dest_bitmap, TEST_PBI_FILE));
+#endif
+}
+
+void test_music__playing_album_art_huge_status_bar(void) {
+#if MUSIC_ALBUM_ART_SUPPORTED
+  prv_set_now_playing("Crumbling Castle", "King Gizzard & The Lizard Wizard");
+  s_music_play_state = MusicPlayStatePlaying;
+  s_music_track_pos_ms = 75 * 1000;
+  s_music_track_length_ms = 644 * 1000;
+  s_music_progress_supported = true;
+  s_music_now_playing_generation = 1;
+  s_imaging_supported = true;
+  s_prefs_music_show_album_art = true;
+  s_notification_status_bar_style = NotificationStatusBarStyle_Huge;
+  prv_receive_album_art();
+
+  prv_launch_app_and_render();
+#if MUSIC_ROUND_MEDIA_LAYOUT
+  cl_check(
+      gbitmap_pbi_eq(&s_ctx.dest_bitmap, TEST_NAMED_PBI_FILE("test_music__playing_album_art")));
+#else
+  cl_check(gbitmap_pbi_eq(&s_ctx.dest_bitmap, TEST_PBI_FILE));
+#endif
 #endif
 }
 
