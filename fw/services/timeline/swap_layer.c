@@ -46,6 +46,10 @@
 // Pixel peek amount for next layout
 #define PEEK_PX PBL_IF_RECT_ELSE(LAYOUT_BANNER_HEIGHT_RECT, 0)
 
+// Size and right margin of the arrow on the next layout's banner, clear of the centred icon
+#define NEXT_BANNER_ARROW_HEIGHT_PX 7
+#define NEXT_BANNER_ARROW_MARGIN_PX 10
+
 // Get within FUDGE_PX to the end of the layout on a scroll, and will
 // scroll the rest of the way.
 // Uses 0 for circular display to support paging
@@ -270,6 +274,26 @@ static void prv_arrow_layer_update_proc(Layer *layer, GContext *ctx) {
   graphics_context_set_compositing_mode(ctx, compositing_mode);
 
   graphics_draw_bitmap_in_rect(ctx, &arrow_layer->arrow_bitmap, &arrow_bounds);
+}
+
+//! Draws a down arrow on the next layout's banner while any of it is on screen, showing that
+//! pressing down brings that layout in. The banner moves, so this follows the next layout's frame.
+static void prv_next_banner_arrow_update_proc(Layer *layer, GContext *ctx) {
+  const SwapLayer *swap_layer = (SwapLayer *)layer->parent;
+  const LayoutLayer *next = swap_layer->next;
+  if (!next || PEEK_PX == 0 || next->layer.frame.origin.y >= layer->frame.size.h) {
+    return;
+  }
+
+  graphics_context_set_fill_color(ctx, gcolor_legible_over(layout_get_colors(next)->bg_color));
+  const int16_t arrow_right_x = layer->frame.size.w - NEXT_BANNER_ARROW_MARGIN_PX;
+  const int16_t arrow_top_y =
+      next->layer.frame.origin.y + (PEEK_PX - NEXT_BANNER_ARROW_HEIGHT_PX) / 2;
+  for (int16_t row = 0; row < NEXT_BANNER_ARROW_HEIGHT_PX; row++) {
+    const GRect row_rect = GRect(arrow_right_x - (2 * NEXT_BANNER_ARROW_HEIGHT_PX) + 1 + row,
+                                 arrow_top_y + row, 2 * (NEXT_BANNER_ARROW_HEIGHT_PX - row) - 1, 1);
+    graphics_fill_rect(ctx, &row_rect);
+  }
 }
 
 ////////////////////////////////
@@ -1166,6 +1190,10 @@ void swap_layer_init(SwapLayer *swap_layer, const GRect *frame) {
   layer_set_update_proc(&swap_layer->arrow_layer.layer, prv_arrow_layer_update_proc);
   layer_add_child(layer, &swap_layer->arrow_layer.layer);
 
+  layer_init(&swap_layer->next_banner_arrow_layer, &GRect(0, 0, frame->size.w, frame->size.h));
+  layer_set_update_proc(&swap_layer->next_banner_arrow_layer, prv_next_banner_arrow_update_proc);
+  layer_add_child(layer, &swap_layer->next_banner_arrow_layer);
+
 #ifdef CONFIG_TOUCH
   swap_layer_touch_register(swap_layer);
 #endif
@@ -1181,6 +1209,7 @@ void swap_layer_deinit(SwapLayer *swap_layer) {
 #endif
   gbitmap_deinit(&swap_layer->arrow_layer.arrow_bitmap);
   layer_deinit(&swap_layer->arrow_layer.layer);
+  layer_deinit(&swap_layer->next_banner_arrow_layer);
   prv_swap_layer_reset(swap_layer);
   layer_deinit(&swap_layer->layer);
 }
