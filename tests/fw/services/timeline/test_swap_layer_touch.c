@@ -299,6 +299,20 @@ void test_swap_layer_touch__scroll_1to1_and_next_peek(void) {
                     fs.current.layer.frame.origin.y + fs.current.layer.frame.size.h);
 }
 
+void test_swap_layer_touch__fitting_notification_has_no_peek_scroll(void) {
+  FakeSwap fs;
+  prv_build_swap(&fs, 168, 168, true /* has_next */);
+  swap_layer_touch_scroll_by(&fs.swap, -1000);
+  cl_assert_equal_i(prv_offset(&fs), 0);
+}
+
+void test_swap_layer_touch__overflowing_notification_keeps_peek_scroll(void) {
+  FakeSwap fs;
+  prv_build_swap(&fs, 168, 169, true /* has_next */);
+  swap_layer_touch_scroll_by(&fs.swap, -1000);
+  cl_assert(prv_offset(&fs) > 1);
+}
+
 // =============================================================================================
 // The two-threshold liftoff decision (DRAG_THRESHOLD_PX = 10, SWAP_OVERPULL_PX = 40).
 // =============================================================================================

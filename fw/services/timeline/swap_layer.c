@@ -355,13 +355,18 @@ static void prv_swap_up_complete(Animation *animation, bool finished, void *cont
   prv_refresh_next_layer(swap_layer);
 }
 
+//! Whether a layout already shows all of its content, so it never scrolls to peek the next one.
+static bool prv_layout_skips_peek(const SwapLayer *swap_layer, const LayoutLayer *layout) {
+  return (PEEK_PX > 0) && (layout->layer.frame.size.h <= swap_layer->layer.frame.size.h);
+}
+
 static Animation *prv_create_swap_up_animation(SwapLayer *swap_layer, bool full_swap) {
   int16_t dy;
 
   const GRect *prev_frame = &swap_layer->previous->layer.frame;
   const GRect *current_frame = &swap_layer->current->layer.frame;
 
-  if (full_swap) {
+  if (full_swap || prv_layout_skips_peek(swap_layer, swap_layer->previous)) {
     dy = prev_frame->size.h - current_frame->origin.y;
   } else {
     dy = swap_layer->layer.frame.size.h - PEEK_PX;
@@ -548,9 +553,9 @@ static bool prv_attempt_swap(SwapLayer *swap_layer, ScrollDirection direction, b
 static int16_t prv_get_max_scroll_dy(SwapLayer *swap_layer) {
   int16_t max_dy = swap_layer->current->layer.frame.size.h - swap_layer->layer.frame.size.h;
 
-  // we are peeking the next notification if we have a next.
+  // we are peeking the next notification if we have a next, unless this one shows all its content.
   if (swap_layer->next != nullptr) {
-    max_dy += PEEK_PX;
+    max_dy += prv_layout_skips_peek(swap_layer, swap_layer->current) ? 0 : PEEK_PX;
   } else {
 #if PBL_ROUND
     // The last notification has to be able to scroll past content to stay page aligned
@@ -676,8 +681,10 @@ static void prv_up_multi_click_handler(ClickRecognizerRef recognizer, void *cont
   int16_t offset = prv_get_current_notification_offset(swap_layer);
   const GRect *layer_frame = &swap_layer->layer.frame;
   const GRect *current_frame = &swap_layer->current->layer.frame;
-  if ((current_frame->size.h - layer_frame->size.h - offset) ==
-      -PBL_IF_RECT_ELSE(LAYOUT_BANNER_HEIGHT_RECT, LAYOUT_TOP_BANNER_HEIGHT_ROUND)) {
+  // A layout that skips the peek can't scroll, so the first click can only have been a swap.
+  if (prv_layout_skips_peek(swap_layer, swap_layer->current) ||
+      (current_frame->size.h - layer_frame->size.h - offset) ==
+          -PBL_IF_RECT_ELSE(LAYOUT_BANNER_HEIGHT_RECT, LAYOUT_TOP_BANNER_HEIGHT_ROUND)) {
     prv_scroll_to_top(swap_layer);
   } else {
     prv_attempt_swap(swap_layer, ScrollDirectionUp, true /* to_top */);
