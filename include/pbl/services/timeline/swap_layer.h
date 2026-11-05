@@ -130,6 +130,8 @@ typedef struct SwapLayer {
   Layer layer;
   /** Arrow hinting at more content. */
   ArrowLayer arrow_layer;
+  /** Arrow drawn on the banner of the next layout while it peeks. */
+  Layer next_banner_arrow_layer;
   /** Scroll or swap animation in progress. */
   Animation *animation;
   /** Previous layout. */
